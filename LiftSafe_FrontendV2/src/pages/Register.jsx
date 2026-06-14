@@ -34,12 +34,16 @@ export default function Register() {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.password) { setError('Completa los campos obligatorios'); return; }
     if (form.password !== form.confirm) { setError('Las contraseñas no coinciden'); return; }
-    register(form);
-    navigate('/dashboard');
+    const result = await register(form);
+    if (result.success) {
+      navigate('/dashboard');
+    } else {
+      setError(result.message || 'No se pudo crear la cuenta');
+    }
   };
 
   return (

@@ -13,5 +13,10 @@ export default defineConfig({
     fs: {
       allow: ['..', path.resolve(__dirname, '../.cursor')],
     },
+    proxy: {
+      '/auth': 'http://localhost:8000',
+      '/vistas': 'http://localhost:8000',
+      '/dashboard': 'http://localhost:8000',
+    },
   },
 })

@@ -6,6 +6,8 @@ import theme from './theme/theme';
 import DashboardLayout from './layouts/DashboardLayout';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import DashboardHome from './pages/DashboardHome';
 import Inspections from './pages/Inspections';
 import Elevators from './pages/Elevators';
@@ -20,6 +22,8 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/dashboard" element={user ? <DashboardLayout /> : <Navigate to="/login" />}>
         <Route index element={<DashboardHome />} />
         <Route path="inspecciones" element={<Inspections />} />

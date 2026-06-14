@@ -10,9 +10,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
-    MAIL_USERNAME: str = "esteban282407@gmail.com"
-    MAIL_PASSWORD: str = "zyyd nymw nbbg piyq"
-    MAIL_FROM: str = "esteban282407@gmail.com"
+    MAIL_USERNAME: str = "liftsafe2025@gmail.com"
+    MAIL_PASSWORD: str = "rgib yzdb cmny skpv"
+    MAIL_FROM: str = "liftsafe2025@gmail.com"
     MAIL_PORT: int = 587
     MAIL_SERVER: str = "smtp.gmail.com"
     MAIL_STARTTLS: bool = True

@@ -1,28 +1,28 @@
 import { useState } from 'react';
 import {
   Box, Card, CardContent, Button, Chip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Typography, Checkbox, FormControlLabel, Divider,
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Typography, Checkbox, FormControlLabel, Divider, Alert, CircularProgress,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import PageHeader from '../components/PageHeader';
-import { inspections, checklistItems, statusColor } from '../data/mockData';
+import { checklistItems, statusColor } from '../data/mockData';
 import { brand } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
+import { useDashboardData } from '../hooks/useDashboardData';
+import { fetchInspecciones } from '../services/dashboardService';
 
 export default function Inspections() {
-  const { user, hasAction } = useAuth();
+  const { hasAction } = useAuth();
+  const { data: rows = [], loading, error } = useDashboardData(fetchInspecciones);
   const [open, setOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState(null);
-
-  const isAdmin = user?.role === 'Administrador';
-  const rows = isAdmin ? inspections : inspections.filter((i) => i.inspector === user?.name || i.inspector === 'Carlos Ruiz');
 
   return (
     <Box>
       <PageHeader
         title="Inspecciones"
-        subtitle={isAdmin ? 'Gestión global de inspecciones' : 'Tus inspecciones asignadas'}
+        subtitle="Inspecciones registradas en LiftSafe"
         breadcrumbs={[{ label: 'Inicio', path: '/dashboard' }, { label: 'Inspecciones' }]}
       />
       {hasAction('createInspection') && (
@@ -31,42 +31,50 @@ export default function Inspections() {
         </Box>
       )}
 
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
       <Card>
         <CardContent sx={{ p: 0 }}>
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ bgcolor: 'grey.50' }}>
-                  <TableCell><strong>ID</strong></TableCell>
-                  <TableCell><strong>Edificio</strong></TableCell>
-                  <TableCell><strong>Ascensor</strong></TableCell>
-                  <TableCell><strong>Tipo</strong></TableCell>
-                  <TableCell><strong>Inspector</strong></TableCell>
-                  <TableCell><strong>Fecha</strong></TableCell>
-                  <TableCell><strong>Próxima</strong></TableCell>
-                  <TableCell><strong>Estado</strong></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.map((row) => (
-                  <TableRow key={row.id} hover sx={{ cursor: 'pointer' }} onClick={() => { setSelected(row); setDetailOpen(true); }}>
-                    <TableCell><Typography fontWeight={600} color="primary.main">{row.id}</Typography></TableCell>
-                    <TableCell>{row.building}</TableCell>
-                    <TableCell>{row.elevator}</TableCell>
-                    <TableCell>{row.type}</TableCell>
-                    <TableCell>{row.inspector}</TableCell>
-                    <TableCell>{row.date}</TableCell>
-                    <TableCell>{row.nextDate}</TableCell>
-                    <TableCell><Chip label={row.status} color={statusColor[row.status]} size="small" /></TableCell>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
+          ) : (
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: 'grey.50' }}>
+                    <TableCell><strong>Edificio</strong></TableCell>
+                    <TableCell><strong>Ascensor</strong></TableCell>
+                    <TableCell><strong>Tipo</strong></TableCell>
+                    <TableCell><strong>Inspector</strong></TableCell>
+                    <TableCell><strong>Fecha</strong></TableCell>
+                    <TableCell><strong>Próxima</strong></TableCell>
+                    <TableCell><strong>Estado</strong></TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {rows.map((row) => (
+                    <TableRow key={row.id} hover sx={{ cursor: 'pointer' }} onClick={() => { setSelected(row); setDetailOpen(true); }}>
+                      <TableCell>{row.building}</TableCell>
+                      <TableCell>{row.elevator}</TableCell>
+                      <TableCell>{row.type}</TableCell>
+                      <TableCell>{row.inspector}</TableCell>
+                      <TableCell>{row.date}</TableCell>
+                      <TableCell>{row.nextDate}</TableCell>
+                      <TableCell><Chip label={row.status} color={statusColor[row.status] || 'default'} size="small" /></TableCell>
+                    </TableRow>
+                  ))}
+                  {!rows.length && (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center">No hay inspecciones registradas</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </CardContent>
       </Card>
 
-      {/* Nueva inspección */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle fontWeight={700}>Nueva inspección</DialogTitle>
         <DialogContent>
@@ -96,16 +104,15 @@ export default function Inspections() {
         </DialogActions>
       </Dialog>
 
-      {/* Detalle con checklist */}
       <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>
-          <Typography fontWeight={700}>{selected?.id} — {selected?.building}</Typography>
+          <Typography fontWeight={700}>{selected?.building}</Typography>
           <Typography variant="body2" color="text.secondary">{selected?.elevator} · {selected?.type} · {selected?.inspector}</Typography>
         </DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 3 }}>
             <Box><Typography variant="caption" color="text.secondary">Dirección</Typography><Typography variant="body2">{selected?.address}</Typography></Box>
-            <Box><Typography variant="caption" color="text.secondary">Capacidad</Typography><Typography variant="body2">{selected?.capacity}</Typography></Box>
+            <Box><Typography variant="caption" color="text.secondary">Marca / Modelo</Typography><Typography variant="body2">{selected?.brand} {selected?.model}</Typography></Box>
           </Box>
           <Divider sx={{ mb: 2 }} />
           <Typography variant="subtitle1" fontWeight={600} gutterBottom color="primary.dark">Lista de verificación técnica</Typography>

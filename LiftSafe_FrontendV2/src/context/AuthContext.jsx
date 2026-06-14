@@ -1,8 +1,17 @@
 import { createContext, useContext, useState } from 'react';
-import { DEMO_USERS } from '../constants/demoUsers';
 import { canDo } from '../config/roles';
+import { loginRequest, registerRequest } from '../services/authService';
 
 const AuthContext = createContext(null);
+
+function buildUserFromLogin(data, correo) {
+  return {
+    name: data.nombre,
+    email: correo,
+    role: data.rol,
+    token: data.access_token,
+  };
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
@@ -10,32 +19,35 @@ export function AuthProvider({ children }) {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const login = (email, password) => {
-    const found = DEMO_USERS.find(u => u.email === email && u.password === password);
-    if (!found) return false;
-    const userWithoutPassword = { ...found };
-    delete userWithoutPassword.password;
-    localStorage.setItem('liftsafe_user', JSON.stringify(userWithoutPassword));
-    setUser(userWithoutPassword);
-    return true;
+  const login = async (email, password) => {
+    try {
+      const data = await loginRequest(email, password);
+      const userData = buildUserFromLogin(data, email);
+      localStorage.setItem('liftsafe_user', JSON.stringify(userData));
+      localStorage.setItem('liftsafe_token', data.access_token);
+      setUser(userData);
+      return { success: true };
+    } catch (error) {
+      return { success: false, message: error.message || 'Correo o contraseña incorrectos' };
+    }
   };
 
-  const register = (formData) => {
-    const exists = DEMO_USERS.some(u => u.email === formData.email);
-    if (exists) return { success: false, message: 'El correo ya está registrado' };
-    const newUser = {
-      name: formData.name,
-      email: formData.email,
-      document: formData.document,
-      role: formData.role,
-    };
-    localStorage.setItem('liftsafe_user', JSON.stringify(newUser));
-    setUser(newUser);
-    return { success: true };
+  const register = async (formData) => {
+    try {
+      await registerRequest(formData);
+      const loginResult = await login(formData.email, formData.password);
+      if (!loginResult.success) {
+        return { success: true, message: 'Cuenta creada. Inicia sesión con tus credenciales.' };
+      }
+      return { success: true };
+    } catch (error) {
+      return { success: false, message: error.message || 'No se pudo registrar el usuario' };
+    }
   };
 
   const logout = () => {
     localStorage.removeItem('liftsafe_user');
+    localStorage.removeItem('liftsafe_token');
     setUser(null);
   };
 

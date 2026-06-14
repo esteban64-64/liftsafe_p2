@@ -1,4 +1,4 @@
-import { Box, Button } from '@mui/material';
+import { Box, Button, Alert, CircularProgress } from '@mui/material';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ElevatorOutlinedIcon from '@mui/icons-material/ElevatorOutlined';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -9,58 +9,67 @@ import WelcomeBanner from '../../components/WelcomeBanner';
 import ChartCard from '../../components/dashboard/ChartCard';
 import ActivityPanel from '../../components/dashboard/ActivityPanel';
 import { ComplianceLineChart } from '../../components/dashboard/DashboardCharts';
-import { clientCertTimeline } from '../../data/dashboardData';
 import { useAuth } from '../../context/AuthContext';
-
-const myCerts = [
-  { id: 'CERT-2026-041', building: 'Torre Central', elevator: 'ASC-01', date: '05/06/2027', status: 'Vigente' },
-  { id: 'CERT-2026-038', building: 'Torre Central', elevator: 'ASC-02', date: '02/06/2027', status: 'Vigente' },
-];
+import { useDashboardData } from '../../hooks/useDashboardData';
+import { fetchAscensores, fetchInformes } from '../../services/dashboardService';
 
 export default function ClientDashboard() {
   const { user } = useAuth();
+  const { data: ascensores = [], loading: loadingAsc, error: ascError } = useDashboardData(fetchAscensores);
+  const { data: informes = [], loading: loadingInf, error: infError } = useDashboardData(fetchInformes);
 
-  const certItems = myCerts.map((c) => ({
+  const loading = loadingAsc || loadingInf;
+  const error = ascError || infError;
+
+  const certItems = informes.map((c) => ({
     id: c.id,
     title: `${c.elevator} — ${c.building}`,
-    subtitle: `${c.id} · Vence ${c.date}`,
+    subtitle: `${c.id} · ${c.date}`,
     chip: c.status,
     chipColor: 'success',
     type: 'success',
   }));
 
+  const timeline = informes.slice(0, 6).map((item, index) => ({
+    month: `Cert ${index + 1}`,
+    cumplimiento: 100,
+  }));
+
   return (
     <Box>
       <WelcomeBanner name={user?.name} role={user?.role} />
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 2, mb: 3 }}>
-        <StatCard title="Mis ascensores" value="2" subtitle="Torre Central" icon={<ElevatorOutlinedIcon />} accent="#7C5CBF" />
-        <StatCard title="Certificados vigentes" value="2" subtitle="100% al día" icon={<CheckCircleIcon />} accent="#0E7C4A" trend={0} />
-        <StatCard title="Reportes disponibles" value="2" subtitle="Listos para descarga" icon={<DescriptionOutlinedIcon />} accent="#0066CC" />
+        <StatCard title="Mis ascensores" value={String(ascensores.length)} subtitle="Equipos registrados" icon={<ElevatorOutlinedIcon />} accent="#7C5CBF" />
+        <StatCard title="Certificados vigentes" value={String(informes.length)} subtitle="Informes aprobados" icon={<CheckCircleIcon />} accent="#0E7C4A" trend={0} />
+        <StatCard title="Reportes disponibles" value={String(informes.length)} subtitle="Listos para consulta" icon={<DescriptionOutlinedIcon />} accent="#0066CC" />
       </Box>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.2fr 1fr' }, gap: 2.5 }}>
-        <ChartCard
-          title="Estado de certificaciones"
-          subtitle="Historial de vigencia en tus ascensores"
-          action={
-            <Button component={Link} to="/dashboard/reportes" size="small" variant="contained" startIcon={<VerifiedOutlinedIcon />}>
-              Ver reportes
-            </Button>
-          }
-        >
-          <ComplianceLineChart
-            data={clientCertTimeline.map((d) => ({ month: d.month, cumplimiento: d.vigentes === 2 ? 100 : 85 }))}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
+      ) : (
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.2fr 1fr' }, gap: 2.5 }}>
+          <ChartCard
+            title="Estado de certificaciones"
+            subtitle="Certificados aprobados en tu cuenta"
+            action={
+              <Button component={Link} to="/dashboard/reportes" size="small" variant="contained" startIcon={<VerifiedOutlinedIcon />}>
+                Ver reportes
+              </Button>
+            }
+          >
+            <ComplianceLineChart data={timeline.length ? timeline : [{ month: 'Sin datos', cumplimiento: 0 }]} />
+          </ChartCard>
+          <ActivityPanel
+            title="Mis certificados"
+            subtitle="Documentos vigentes"
+            items={certItems}
+            accent="#7C5CBF"
+            action={<Button component={Link} to="/dashboard/reportes" size="small" variant="outlined">Descargar</Button>}
           />
-        </ChartCard>
-        <ActivityPanel
-          title="Certificados de Torre Central"
-          subtitle="Documentos vigentes"
-          items={certItems}
-          accent="#7C5CBF"
-          action={<Button component={Link} to="/dashboard/reportes" size="small" variant="outlined">Descargar</Button>}
-        />
-      </Box>
+        </Box>
+      )}
     </Box>
   );
 }
