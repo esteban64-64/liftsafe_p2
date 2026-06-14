@@ -1,4 +1,5 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { canDo } from '../config/roles';
 import { loginRequest, registerRequest } from '../services/authService';
 
@@ -14,10 +15,41 @@ function buildUserFromLogin(data, correo) {
 }
 
 export function AuthProvider({ children }) {
+  const navigate = useNavigate();
+  
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('liftsafe_user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('liftsafe_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.role && parsed.token) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error('Error al cargar usuario:', e);
+      localStorage.removeItem('liftsafe_user');
+      localStorage.removeItem('liftsafe_token');
+    }
+    return null;
   });
+
+  // Verificar token al cargar
+  useEffect(() => {
+    if (user) {
+      try {
+        const payload = JSON.parse(atob(user.token.split('.')[1]));
+        const expDate = new Date(payload.exp * 1000);
+        if (expDate < new Date()) {
+          console.log('Token expirado');
+          logout();
+        }
+      } catch (e) {
+        console.error('Error verificando token:', e);
+        logout();
+      }
+    }
+  }, []);
 
   const login = async (email, password) => {
     try {
@@ -37,11 +69,11 @@ export function AuthProvider({ children }) {
       await registerRequest(formData);
       const loginResult = await login(formData.email, formData.password);
       if (!loginResult.success) {
-        return { success: true, message: 'Cuenta creada. Inicia sesión con tus credenciales.' };
+        return { success: true, message: 'Cuenta creada. Inicia sesión.' };
       }
       return { success: true };
     } catch (error) {
-      return { success: false, message: error.message || 'No se pudo registrar el usuario' };
+      return { success: false, message: error.message || 'No se pudo registrar' };
     }
   };
 
@@ -49,6 +81,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('liftsafe_user');
     localStorage.removeItem('liftsafe_token');
     setUser(null);
+    navigate('/login');
   };
 
   const hasAction = (action) => canDo(user?.role, action);
@@ -60,5 +93,4 @@ export function AuthProvider({ children }) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

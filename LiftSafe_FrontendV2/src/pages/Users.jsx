@@ -1,7 +1,7 @@
 import { Box, Card, CardContent, Chip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, Avatar, Alert, CircularProgress } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import PageHeader from '../components/PageHeader';
-import { statusColor } from '../data/mockData';
+import { statusColor } from '../utils/statusHelpers'; // ✅ CAMBIADO
 import { useDashboardData } from '../hooks/useDashboardData';
 import { fetchUsuarios } from '../services/dashboardService';
 
@@ -37,14 +37,14 @@ export default function UsersPage() {
                     <TableRow key={u.id} hover>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                          <Avatar sx={{ width: 32, height: 32, fontSize: 14 }}>{u.name.charAt(0)}</Avatar>
-                          {u.name}
+                          <Avatar sx={{ width: 32, height: 32, fontSize: 14 }}>{u.name?.charAt(0) || '?'}</Avatar>
+                          {u.name || 'Sin nombre'}
                         </Box>
                       </TableCell>
                       <TableCell>{u.email}</TableCell>
                       <TableCell>{u.document}</TableCell>
                       <TableCell><Chip label={u.role} size="small" color={u.role === 'Administrador' ? 'primary' : 'default'} variant="outlined" /></TableCell>
-                      <TableCell>{u.inspections}</TableCell>
+                      <TableCell>{u.inspections || 0}</TableCell>
                       <TableCell><Chip label={u.status} color={statusColor[u.status] || 'default'} size="small" /></TableCell>
                     </TableRow>
                   ))}

@@ -17,8 +17,14 @@ export default function CoordinadorDashboard() {
   const { data: inspecciones = [], loading, error } = useDashboardData(fetchInspecciones);
   const { data: charts } = useDashboardData(fetchCharts);
 
-  const pending = inspecciones.filter((item) => item.status === 'Pendiente');
-  const toReview = inspecciones.filter((item) => item.status === 'Observaciones' || item.reportNumber);
+  // ✅ Estados reales de la base de datos
+  const pending = inspecciones.filter((item) => 
+    item.status === 'Programada' || item.status === 'Borrador' || item.status === 'En Proceso'
+  );
+  
+  const toReview = inspecciones.filter((item) => 
+    item.status === 'Aprobada' || item.status === 'Finalizada' || item.reportNumber
+  );
 
   const assignmentItems = pending.slice(0, 5).map((item) => ({
     id: item.id,
@@ -35,8 +41,8 @@ export default function CoordinadorDashboard() {
     title: `${item.elevator} — ${item.building}`,
     subtitle: item.inspector,
     chip: item.status,
-    chipColor: item.status === 'Observaciones' ? 'warning' : 'info',
-    type: item.status === 'Observaciones' ? 'warning' : 'info',
+    chipColor: item.status === 'Aprobada' ? 'success' : 'info',
+    type: item.status === 'Aprobada' ? 'success' : 'info',
   }));
 
   return (

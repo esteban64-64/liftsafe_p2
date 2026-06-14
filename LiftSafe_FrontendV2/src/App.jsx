@@ -16,15 +16,25 @@ import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Settings from './pages/Settings';
 
-const AppRoutes = () => {
+const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+};
+
+const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/dashboard" element={user ? <DashboardLayout /> : <Navigate to="/login" />}>
+      
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+          <DashboardLayout />
+        </ProtectedRoute>
+      }>
         <Route index element={<DashboardHome />} />
         <Route path="inspecciones" element={<Inspections />} />
         <Route path="ascensores" element={<Elevators />} />
@@ -33,7 +43,8 @@ const AppRoutes = () => {
         <Route path="usuarios" element={<Users />} />
         <Route path="configuracion" element={<Settings />} />
       </Route>
-      <Route path="*" element={<Navigate to="/dashboard" />} />
+      
+      <Route path="*" element={<Navigate to="/login" />} />
     </Routes>
   );
 };
@@ -42,11 +53,11 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AuthProvider>
-        <BrowserRouter>
+      <BrowserRouter>
+        <AuthProvider>
           <AppRoutes />
-        </BrowserRouter>
-      </AuthProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </ThemeProvider>
   );
 }

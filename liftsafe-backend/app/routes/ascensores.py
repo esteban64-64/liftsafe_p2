@@ -122,33 +122,3 @@ def mis_ascensores_inspeccionados(request: Request, db: Session = Depends(get_db
         }
         for a, cliente in ascensores
     ]
-    
-@router.get("/mis-ascensores")
-def mis_ascensores_inspeccionados(request: Request, db: Session = Depends(get_db)):
-    rol, correo, user_id = get_current_user_role(request)
-    
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Usuario no identificado")
-    
-    # Buscar ascensores que el inspector ha inspeccionado
-    from app.models.models import Inspeccion
-    ascensores = db.query(Ascensor, Usuario.nombre_completo).\
-        join(Inspeccion, Ascensor.id_ascensor == Inspeccion.id_ascensor).\
-        join(Usuario, Ascensor.id_cliente == Usuario.id_usuario).\
-        filter(Inspeccion.id_inspector == user_id).\
-        distinct().all()
-    
-    return [
-        {
-            "id_ascensor": a.id_ascensor,
-            "codigo_interno": a.codigo_interno,
-            "marca": a.marca,
-            "modelo": a.modelo,
-            "tipo_ascensor": a.tipo_ascensor,
-            "capacidad_kg": a.capacidad_kg,
-            "ciudad": a.ciudad,
-            "estado": a.estado,
-            "cliente": cliente
-        }
-        for a, cliente in ascensores
-    ]

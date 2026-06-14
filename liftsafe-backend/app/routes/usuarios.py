@@ -48,33 +48,3 @@ def listado_usuarios(db: Session = Depends(get_db)):
         }
         for u, rol in usuarios
     ]
-    
-@router.get("/dashboard/cliente/{client_id}")
-def dashboard_cliente(client_id: int, db: Session = Depends(get_db)):
-    ascensores = db.query(Ascensor).filter(Ascensor.id_cliente == client_id).all()
-    return [
-        {
-            "id_ascensor": a.id_ascensor,
-            "codigo_interno": a.codigo_interno,
-            "marca": a.marca,
-            "modelo": a.modelo,
-            "tipo_ascensor": a.tipo_ascensor,
-            "ciudad": a.ciudad,
-            "estado": a.estado
-        }
-        for a in ascensores
-    ]
-@router.get("/dashboard/inspector/{inspector_id}")
-def dashboard_inspector(inspector_id: int, db: Session = Depends(get_db)):
-    inspecciones = db.query(Inspeccion).filter(Inspeccion.id_inspector == inspector_id).all()
-    return [
-        {
-            "id_inspeccion": i.id_inspeccion,
-            "id_ascensor": i.id_ascensor,
-            "fecha_inicio": i.fecha_inicio,
-            "fecha_fin": i.fecha_fin,
-            "estado": i.estado,
-            "observaciones_generales": i.observaciones_generales
-        }
-        for i in inspecciones
-    ]

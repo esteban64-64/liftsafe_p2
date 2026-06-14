@@ -5,11 +5,19 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import PageHeader from '../components/PageHeader';
-import { checklistItems, statusColor } from '../data/mockData';
+import { statusColor } from '../utils/statusHelpers'; // ✅ CAMBIADO: de mockData a utils
 import { brand } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { fetchInspecciones } from '../services/dashboardService';
+
+// ✅ Checklist items estáticos (no son datos de demo, es configuración de la app)
+const CHECKLIST_CATEGORIES = [
+  { category: 'Seguridad', items: ['Frenos de emergencia', 'Paracaídas', 'Límite de velocidad', 'Puertas de cabina'] },
+  { category: 'Mecánica', items: ['Cables de tracción', 'Poleas', 'Motor de tracción', 'Sistema de guías'] },
+  { category: 'Eléctrica', items: ['Tablero de control', 'Botonera', 'Iluminación de cabina', 'Sistema de alarma'] },
+  { category: 'Documentación', items: ['Manual de mantenimiento', 'Registro de revisiones', 'Placa de capacidad', 'Certificado vigente'] },
+];
 
 export default function Inspections() {
   const { hasAction } = useAuth();
@@ -75,19 +83,19 @@ export default function Inspections() {
         </CardContent>
       </Card>
 
+      {/* Diálogo de nueva inspección - Los edificios y ascensores deben venir de la BD */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle fontWeight={700}>Nueva inspección</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            {/* TODO: Estos selects deben cargar edificios y ascensores de la BD */}
             <TextField select label="Edificio" fullWidth defaultValue="">
-              <MenuItem value="Torre Central">Torre Central</MenuItem>
-              <MenuItem value="Edificio Norte">Edificio Norte</MenuItem>
-              <MenuItem value="Plaza Comercial">Plaza Comercial</MenuItem>
+              <MenuItem value=""><em>Seleccione un edificio</em></MenuItem>
+              {/* Cargar dinámicamente desde fetchEdificios */}
             </TextField>
             <TextField select label="Ascensor" fullWidth defaultValue="">
-              <MenuItem value="ASC-01">ASC-01</MenuItem>
-              <MenuItem value="ASC-02">ASC-02</MenuItem>
-              <MenuItem value="ASC-03">ASC-03</MenuItem>
+              <MenuItem value=""><em>Seleccione un ascensor</em></MenuItem>
+              {/* Cargar dinámicamente según edificio seleccionado */}
             </TextField>
             <TextField select label="Tipo de inspección" fullWidth defaultValue="Periódica">
               <MenuItem value="Anual">Anual</MenuItem>
@@ -104,6 +112,7 @@ export default function Inspections() {
         </DialogActions>
       </Dialog>
 
+      {/* Diálogo de detalle */}
       <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>
           <Typography fontWeight={700}>{selected?.building}</Typography>
@@ -116,7 +125,7 @@ export default function Inspections() {
           </Box>
           <Divider sx={{ mb: 2 }} />
           <Typography variant="subtitle1" fontWeight={600} gutterBottom color="primary.dark">Lista de verificación técnica</Typography>
-          {checklistItems.map((cat) => (
+          {CHECKLIST_CATEGORIES.map((cat) => (
             <Box key={cat.category} sx={{ mb: 2 }}>
               <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: brand.blueDark }}>{cat.category}</Typography>
               {cat.items.map((item) => (

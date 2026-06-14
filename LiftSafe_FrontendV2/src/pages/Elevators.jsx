@@ -3,7 +3,7 @@ import { Box, Card, CardContent, Chip, Table, TableBody, TableCell, TableContain
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import PageHeader from '../components/PageHeader';
-import { statusColor } from '../data/mockData';
+import { statusColor } from '../utils/statusHelpers';
 import { useAuth } from '../context/AuthContext';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { fetchAscensores } from '../services/dashboardService';

@@ -1,30 +1,53 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-export function useDashboardData(fetcher, deps = []) {
-  const [data, setData] = useState(null);
+export function useDashboardData(fetchFunction) {
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    let active = true;
+    let mounted = true;
 
-    const load = async () => {
-      setLoading(true);
-      setError('');
+    const loadData = async () => {
       try {
-        const result = await fetcher();
-        if (active) setData(result);
+        setLoading(true);
+        setError(null);
+        const result = await fetchFunction();
+        
+        if (mounted) {
+          setData(result);
+        }
       } catch (err) {
-        if (active) setError(err.message || 'No se pudieron cargar los datos');
+        if (mounted) {
+          console.error('Error en useDashboardData:', err);
+          
+          // 🔴 Si el token expiró (401), cerrar sesión y redirigir al login
+          if (err.message?.includes('401') || err.message?.includes('Unauthorized') || err.message?.includes('expired')) {
+            localStorage.removeItem('liftsafe_token');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            navigate('/login', { replace: true });
+            return;
+          }
+          
+          setError(err.message || 'Error al cargar datos');
+          setData([]);
+        }
       } finally {
-        if (active) setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
-    load();
-    return () => { active = false; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+    loadData();
+
+    return () => {
+      mounted = false;
+    };
+  }, [fetchFunction, navigate]);
 
   return { data, loading, error };
 }
