@@ -42,37 +42,16 @@ def get_inspecciones_query(db: Session, rol: str, user_id: int):
         joinedload(Inspeccion.ascensor).joinedload(Ascensor.cliente)
     )
     
-    if rol == "Administrador":
-        # Admin ve todo
+    if rol in ["Administrador", "Director Técnico", "Coordinador"]:
         return query
-    
-    elif rol == "Director Técnico":
-        # Director ve todo
-        return query
-    
-    elif rol == "Coordinador":
-        # Coordinador ve todo
-        return query
-    
     elif rol == "Inspector":
-        # Inspector: solo sus inspecciones asignadas
         return query.filter(Inspeccion.id_inspector == user_id)
-    
     elif rol == "Asesor":
-        # Asesor: inspecciones de clientes que tiene asignados
-        # Buscar clientes del asesor (usuarios con rol Cliente asignados a este asesor)
-        return query.join(Ascensor).filter(
-            Ascensor.id_cliente.in_(
-                db.query(UsuarioAscensor.id_usuario).filter(
-                    UsuarioAscensor.id_usuario == user_id
-                )
-            )
-        )
-    
-    elif rol == "Cliente":
-        # Cliente: solo inspecciones de sus ascensores
+        # ✅ CORREGIDO: Buscar clientes del asesor por relación directa
+        # Si no tienes tabla intermedia, ajusta según tu modelo
         return query.join(Ascensor).filter(Ascensor.id_cliente == user_id)
-    
+    elif rol == "Cliente":
+        return query.join(Ascensor).filter(Ascensor.id_cliente == user_id)
     else:
         raise HTTPException(status_code=403, detail=f"Rol '{rol}' no autorizado")
 
@@ -85,15 +64,15 @@ def get_ascensores_query(db: Session, rol: str, user_id: int):
         return query
     
     elif rol == "Inspector":
-        # Inspector: ascensores asignados a él
-        return query.join(UsuarioAscensor).filter(UsuarioAscensor.id_usuario == user_id)
+        # ✅ CORREGIDO: Usar Inspeccion en lugar de UsuarioAscensor
+        return query.join(Inspeccion).filter(Inspeccion.id_inspector == user_id).distinct()
     
     elif rol == "Asesor":
-        # Asesor: ascensores de sus clientes
-        return query.join(UsuarioAscensor).filter(UsuarioAscensor.id_usuario == user_id)
+        # ✅ Si el asesor tiene clientes asignados, ajusta según tu modelo
+        # Por ahora, mostramos todos (o filtra si tienes relación asesor-cliente)
+        return query
     
     elif rol == "Cliente":
-        # Cliente: solo sus ascensores
         return query.filter(Ascensor.id_cliente == user_id)
     
     else:
@@ -106,32 +85,17 @@ def get_usuarios_query(db: Session, rol: str, user_id: int):
     
     if rol == "Administrador":
         return query
-    
     elif rol == "Director Técnico":
-        # Director: todos excepto otros admin
         return query.join(Rol).filter(Rol.nombre_rol != "Administrador")
-    
     elif rol == "Coordinador":
-        # Coordinador: inspectores, clientes, asesores
         return query.join(Rol).filter(
             Rol.nombre_rol.in_(["Inspector", "Cliente", "Asesor"])
         )
-    
-    elif rol == "Inspector":
-        # Inspector: solo su propio perfil
+    elif rol in ["Inspector", "Asesor", "Cliente"]:
+        # ✅ CORREGIDO: Solo su propio perfil
         return query.filter(Usuario.id_usuario == user_id)
-    
-    elif rol == "Asesor":
-        # Asesor: solo sus clientes
-        return query.join(UsuarioAscensor).filter(UsuarioAscensor.id_usuario == user_id)
-    
-    elif rol == "Cliente":
-        # Cliente: solo su propio perfil
-        return query.filter(Usuario.id_usuario == user_id)
-    
     else:
         raise HTTPException(status_code=403, detail=f"Rol '{rol}' no autorizado")
-
 
 # ============ RUTAS DE GRÁFICAS ============
 

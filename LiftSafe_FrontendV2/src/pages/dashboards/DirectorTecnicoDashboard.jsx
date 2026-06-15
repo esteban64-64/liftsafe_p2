@@ -12,6 +12,8 @@ import { InspectionTrendChart } from '../../components/dashboard/DashboardCharts
 import { useAuth } from "../../context/AuthContext";
 import { useDashboardData } from "../../hooks/useDashboardData";
 import { fetchInspecciones, fetchCharts, fetchInformes } from "../../services/dashboardService";
+import StatusPieChart from "../../components/dashboard/StatusPieChart";
+
 
 export default function DirectorTecnicoDashboard() {
   const { user } = useAuth();
