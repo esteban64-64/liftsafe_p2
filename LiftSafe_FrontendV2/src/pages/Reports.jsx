@@ -3,8 +3,11 @@ import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import PageHeader from '../components/PageHeader';
+import SearchBar from '../components/SearchBar';
+import ListPagination from '../components/ListPagination';
 import { useAuth } from '../context/AuthContext';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { usePaginatedSearch } from '../hooks/usePaginatedSearch';
 import { fetchInformes, fetchCharts } from '../services/dashboardService';
 
 export default function Reports() {
@@ -12,6 +15,10 @@ export default function Reports() {
   const isClient = user?.role === 'Cliente';
   const { data: docs = [], loading, error } = useDashboardData(fetchInformes);
   const { data: charts } = useDashboardData(fetchCharts, [isClient]);
+  const { search, setSearch, page, setPage, paginated, totalCount } = usePaginatedSearch(
+    docs,
+    ['building', 'elevator', 'inspector', 'status', 'date']
+  );
 
   const summary = charts?.reportsSummary || { certificados: 0, pendientes: 0, por_vencer: 0 };
 
@@ -23,6 +30,9 @@ export default function Reports() {
         breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Reportes' }]}
       />
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <Box sx={{ mb: 2 }}>
+        <SearchBar value={search} onChange={setSearch} placeholder="Buscar reporte o certificado..." />
+      </Box>
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: isClient ? '1fr' : '1fr 2fr' }, gap: 3 }}>
         {!isClient && (
           <Card>
@@ -51,25 +61,28 @@ export default function Reports() {
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
             ) : (
-              <List>
-                {docs.map((doc) => (
-                  <ListItem key={doc.id} divider sx={{ px: 0, flexWrap: 'wrap', gap: 1 }}>
-                    <ListItemIcon><PictureAsPdfOutlinedIcon color="error" /></ListItemIcon>
-                    <ListItemText
-                      primary={`Certificado — ${doc.building}`}
-                      secondary={`${doc.elevator} — ${doc.inspector} — ${doc.date}`}
-                    />
-                    <ListItemSecondaryAction sx={{ position: 'relative', transform: 'none', display: 'flex', gap: 0.5 }}>
-                      <Chip label={doc.status} color="success" size="small" />
-                      <Button size="small" startIcon={<VisibilityOutlinedIcon />}>Ver</Button>
-                      <Button size="small" startIcon={<DownloadOutlinedIcon />}>PDF</Button>
-                    </ListItemSecondaryAction>
-                  </ListItem>
-                ))}
-                {!docs.length && (
-                  <Typography color="text.secondary">No hay certificados disponibles</Typography>
-                )}
-              </List>
+              <>
+                <List>
+                  {paginated.map((doc) => (
+                    <ListItem key={doc.id} divider sx={{ px: 0, flexWrap: 'wrap', gap: 1 }}>
+                      <ListItemIcon><PictureAsPdfOutlinedIcon color="error" /></ListItemIcon>
+                      <ListItemText
+                        primary={`Certificado — ${doc.building}`}
+                        secondary={`${doc.elevator} — ${doc.inspector} — ${doc.date}`}
+                      />
+                      <ListItemSecondaryAction sx={{ position: 'relative', transform: 'none', display: 'flex', gap: 0.5 }}>
+                        <Chip label={doc.status} color="success" size="small" />
+                        <Button size="small" startIcon={<VisibilityOutlinedIcon />}>Ver</Button>
+                        <Button size="small" startIcon={<DownloadOutlinedIcon />}>PDF</Button>
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  ))}
+                  {!paginated.length && (
+                    <Typography color="text.secondary">No hay certificados disponibles</Typography>
+                  )}
+                </List>
+                <ListPagination count={totalCount} page={page} onPageChange={setPage} />
+              </>
             )}
           </CardContent>
         </Card>

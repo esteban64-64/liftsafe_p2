@@ -33,18 +33,18 @@ export default function DirectorTecnicoDashboard() {
 
   const approvalItems = pendingApproval.slice(0, 5).map((item) => ({
     id: item.id,
-    title: `${item.elevator} — ${item.building}`,
-    subtitle: `Fecha: ${item.date}`,
+    title: item.building,
+    subtitle: `${item.elevator} · Fecha: ${item.date}`,
     chip: item.status,
     chipColor: 'warning',
-    actionBtn: <Button component={Link} to={`/dashboard/informes/${item.id}`} size="small" variant="contained" sx={{ ml: 1, flexShrink: 0 }}>Revisar</Button>,
+    actionBtn: <Button component={Link} to="/dashboard/reportes" size="small" variant="contained" sx={{ ml: 1, flexShrink: 0 }}>Revisar</Button>,
     type: 'warning',
   }));
 
   const observationItems = withObservations.slice(0, 5).map((item) => ({
     id: item.id,
-    title: `${item.elevator} — ${item.building}`,
-    subtitle: `Inspector: ${item.inspector}`,
+    title: item.building,
+    subtitle: `${item.elevator} · Inspector: ${item.inspector}`,
     chip: 'Observaciones',
     chipColor: 'error',
     type: 'error',

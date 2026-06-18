@@ -32,7 +32,7 @@ export default function ClienteDashboard() {
 
   const elevatorItems = ascensores.slice(0, 5).map((item) => ({
     id: item.id,
-    title: `${item.code} — ${item.brand}`,
+    title: `${item.brand} ${item.model}`.trim(),
     subtitle: item.building,
     chip: item.status,
     chipColor: item.status === 'Activo' ? 'success' : 'error',
@@ -41,8 +41,8 @@ export default function ClienteDashboard() {
 
   const inspectionItems = inspecciones.slice(0, 5).map((item) => ({
     id: item.id,
-    title: `${item.elevator} — ${item.building}`,
-    subtitle: `Estado: ${item.status}`,
+    title: item.building,
+    subtitle: `${item.elevator} · Estado: ${item.status}`,
     chip: item.status,
     chipColor: item.status === 'Aprobada' ? 'success' : item.status === 'Finalizada' ? 'success' : 'warning',
     type: item.status === 'Aprobada' ? 'success' : 'warning',

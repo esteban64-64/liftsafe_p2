@@ -28,8 +28,8 @@ export default function CoordinadorDashboard() {
 
   const assignmentItems = pending.slice(0, 5).map((item) => ({
     id: item.id,
-    title: `${item.elevator} — ${item.building}`,
-    subtitle: `Programada: ${item.nextDate}`,
+    title: item.building,
+    subtitle: `${item.elevator} · Programada: ${item.nextDate}`,
     chip: item.type,
     chipColor: 'warning',
     actionBtn: <Button component={Link} to="/dashboard/inspecciones" size="small" variant="contained" sx={{ ml: 1, flexShrink: 0 }}>Ver</Button>,
@@ -38,8 +38,8 @@ export default function CoordinadorDashboard() {
 
   const reviewItems = toReview.slice(0, 5).map((item) => ({
     id: item.id,
-    title: `${item.elevator} — ${item.building}`,
-    subtitle: item.inspector,
+    title: item.building,
+    subtitle: `${item.elevator} · ${item.inspector}`,
     chip: item.status,
     chipColor: item.status === 'Aprobada' ? 'success' : 'info',
     type: item.status === 'Aprobada' ? 'success' : 'info',

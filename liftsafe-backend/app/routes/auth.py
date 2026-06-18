@@ -1,14 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.schemas import UsuarioLogin, Token, UsuarioRegister, RecuperarClaveRequest, ResetClaveRequest, MessageResponse
 from app.controllers.auth_controller import authenticate_user, create_access_token, hash_password, create_reset_token, verify_reset_token
 from app.controllers.email_controller import send_reset_email
 from app.models.models import Usuario, Rol
-from fastapi import Depends
-from app.database import get_db
+from app.utils.auth_deps import CLIENTE_ROL_ID
 from jose import jwt, JWTError
 from app.config import settings
+
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
 @router.post("/login", response_model=Token)
@@ -20,7 +20,7 @@ def login(credentials: UsuarioLogin, db: Session = Depends(get_db)):
     token = create_access_token({
         "sub": user.correo,
         "rol": user.rol.nombre_rol,
-        "user_id": user.id_usuario  # ← Verifica que esto esté
+        "user_id": user.id_usuario
     })
     
     return {
@@ -32,24 +32,27 @@ def login(credentials: UsuarioLogin, db: Session = Depends(get_db)):
 
 @router.post("/register", response_model=MessageResponse)
 def register(user_data: UsuarioRegister, db: Session = Depends(get_db)):
-    # Verificar si el correo ya existe
+    if user_data.id_rol != CLIENTE_ROL_ID:
+        raise HTTPException(status_code=403, detail="Solo los clientes pueden registrarse. Contacte al administrador para otros roles.")
+
     existing = db.query(Usuario).filter(Usuario.correo == user_data.correo).first()
     if existing:
         raise HTTPException(status_code=400, detail="El correo ya está registrado")
     
-    # Verificar que el rol existe
-    rol = db.query(Rol).filter(Rol.id_rol == user_data.id_rol).first()
+    rol = db.query(Rol).filter(Rol.id_rol == CLIENTE_ROL_ID).first()
     if not rol:
-        raise HTTPException(status_code=400, detail="Rol no válido")
-    
-    # Crear usuario
+        raise HTTPException(status_code=400, detail="Rol Cliente no configurado en el sistema")
+
     new_user = Usuario(
-        id_rol=user_data.id_rol,
+        id_rol=CLIENTE_ROL_ID,
         nombre_completo=user_data.nombre_completo,
         correo=user_data.correo,
         contrasena=hash_password(user_data.contrasena),
         telefono=user_data.telefono,
+        tipo_documento=user_data.tipo_documento,
         documento_identidad=user_data.documento_identidad,
+        nit=user_data.nit if user_data.tipo_documento == "NIT" else None,
+        razon_social=user_data.razon_social if user_data.tipo_documento == "NIT" else None,
         estado="activo"
     )
     db.add(new_user)
@@ -61,7 +64,6 @@ def register(user_data: UsuarioRegister, db: Session = Depends(get_db)):
 async def recuperar_clave(request: RecuperarClaveRequest, db: Session = Depends(get_db)):
     user = db.query(Usuario).filter(Usuario.correo == request.correo).first()
     if not user:
-        # No revelar si el correo existe o no
         return {"message": "Si el correo existe, recibirás un enlace de recuperación"}
     
     token = create_reset_token(request.correo)
@@ -109,6 +111,7 @@ def get_current_user(db: Session = Depends(get_db), authorization: str = None):
         "correo": u.correo,
         "rol": rol,
         "telefono": u.telefono,
+        "tipo_documento": u.tipo_documento,
         "documento_identidad": u.documento_identidad,
         "estado": u.estado,
         "fecha_registro": u.fecha_registro

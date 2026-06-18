@@ -82,7 +82,7 @@ export default function Login() {
         </Button>
         <Box textAlign="center">
           <Link to="/register" style={{ color: brand.accent, textDecoration: 'none', fontWeight: 600, fontSize: 14 }}>
-            ¿No tienes cuenta? Crea una
+            ¿Eres cliente? Regístrate aquí
           </Link>
         </Box>
       </Box>

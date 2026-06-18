@@ -15,6 +15,7 @@ import Buildings from './pages/Buildings';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Settings from './pages/Settings';
+import RoleRoute from './components/RoleRoute';
 
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
@@ -35,13 +36,13 @@ const AppRoutes = () => {
           <DashboardLayout />
         </ProtectedRoute>
       }>
-        <Route index element={<DashboardHome />} />
-        <Route path="inspecciones" element={<Inspections />} />
-        <Route path="ascensores" element={<Elevators />} />
-        <Route path="edificios" element={<Buildings />} />
-        <Route path="reportes" element={<Reports />} />
-        <Route path="usuarios" element={<Users />} />
-        <Route path="configuracion" element={<Settings />} />
+        <Route index element={<RoleRoute permission="dashboard"><DashboardHome /></RoleRoute>} />
+        <Route path="inspecciones" element={<RoleRoute permission="inspecciones"><Inspections /></RoleRoute>} />
+        <Route path="ascensores" element={<RoleRoute permission="ascensores"><Elevators /></RoleRoute>} />
+        <Route path="edificios" element={<RoleRoute permission="edificios"><Buildings /></RoleRoute>} />
+        <Route path="reportes" element={<RoleRoute permission="reportes"><Reports /></RoleRoute>} />
+        <Route path="usuarios" element={<RoleRoute permission="usuarios"><Users /></RoleRoute>} />
+        <Route path="configuracion" element={<RoleRoute permission="configuracion"><Settings /></RoleRoute>} />
       </Route>
       
       <Route path="*" element={<Navigate to="/login" />} />

@@ -8,3 +8,18 @@ export const ROLE_IDS = {
   Asesor: 5,
   Cliente: 6,
 };
+
+export const ADMIN_CREATABLE_ROLES = [
+  'Administrador',
+  'Director Técnico',
+  'Coordinador',
+  'Inspector',
+  'Asesor',
+];
+
+export const DOCUMENT_TYPES = [
+  { value: 'CC', label: 'Cédula de ciudadanía' },
+  { value: 'NIT', label: 'NIT' },
+  { value: 'PPE', label: 'PPE' },
+  { value: 'CE', label: 'Cédula de extranjería' },
+];

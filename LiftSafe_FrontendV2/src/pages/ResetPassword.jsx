@@ -3,8 +3,10 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { TextField, Button, Box, Alert, InputAdornment } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import AuthLayout from '../layouts/AuthLayout';
+import PasswordRequirements from '../components/PasswordRequirements';
 import { brand } from '../theme/colors';
 import { resetPasswordRequest } from '../services/authService';
+import { isPasswordValid } from '../utils/passwordValidation';
 
 const fieldSx = {
   '& .MuiOutlinedInput-root': {
@@ -32,6 +34,10 @@ export default function ResetPassword() {
     e.preventDefault();
     if (!token) {
       setError('El enlace no es válido. Solicita uno nuevo.');
+      return;
+    }
+    if (!isPasswordValid(password)) {
+      setError('La contraseña no cumple los requisitos de seguridad');
       return;
     }
     if (password !== confirm) {
@@ -68,6 +74,7 @@ export default function ResetPassword() {
               startAdornment: <InputAdornment position="start"><LockOutlinedIcon sx={{ color: brand.accent, fontSize: 20 }} /></InputAdornment>
             }}
           />
+          <PasswordRequirements password={password} />
           <TextField
             fullWidth size="small" label="Confirmar contraseña" type="password"
             value={confirm} onChange={(e) => setConfirm(e.target.value)} required

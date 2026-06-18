@@ -3,7 +3,11 @@ import { API_BASE_URL, ROLE_IDS } from '../config/api';
 async function parseResponse(response) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.detail || data.message || 'Error en la solicitud');
+    const detail = data.detail;
+    const message = Array.isArray(detail)
+      ? detail.map((e) => e.msg || e).join(', ')
+      : detail || data.message || 'Error en la solicitud';
+    throw new Error(message);
   }
   return data;
 }
@@ -25,9 +29,34 @@ export async function registerRequest(formData) {
       nombre_completo: formData.name,
       correo: formData.email,
       contrasena: formData.password,
-      documento_identidad: formData.document || null,
+      tipo_documento: formData.documentType,
+      documento_identidad: formData.document,
+      nit: formData.documentType === 'NIT' ? formData.document : null,
+      razon_social: formData.documentType === 'NIT' ? formData.businessName || null : null,
       telefono: formData.phone || null,
-      id_rol: ROLE_IDS[formData.role] || ROLE_IDS.Cliente,
+      id_rol: ROLE_IDS.Cliente,
+    }),
+  });
+  return parseResponse(response);
+}
+
+export async function createUserRequest(formData, token) {
+  const response = await fetch(`${API_BASE_URL}/usuarios`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      nombre_completo: formData.name,
+      correo: formData.email,
+      contrasena: formData.password,
+      tipo_documento: formData.documentType,
+      documento_identidad: formData.document,
+      nit: formData.documentType === 'NIT' ? formData.document : null,
+      razon_social: formData.documentType === 'NIT' ? formData.businessName || null : null,
+      telefono: formData.phone || null,
+      id_rol: ROLE_IDS[formData.role],
     }),
   });
   return parseResponse(response);

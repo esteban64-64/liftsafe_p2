@@ -31,8 +31,8 @@ export default function AdminDashboard() {
 
   const recentInspections = inspecciones.slice(0, 5).map((item) => ({
     id: item.id,
-    title: `${item.elevator} — ${item.building}`,
-    subtitle: `Inspector: ${item.inspector}`,
+    title: item.building,
+    subtitle: `${item.elevator} · Inspector: ${item.inspector}`,
     chip: item.status,
     chipColor: item.status === 'Aprobada' ? 'success' : item.status === 'Finalizada' ? 'success' : 'warning',
     type: item.status === 'Aprobada' ? 'success' : 'warning',

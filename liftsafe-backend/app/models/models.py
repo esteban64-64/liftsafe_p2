@@ -28,6 +28,7 @@ class Usuario(Base):
     correo = Column(String(120), nullable=False, unique=True)
     contrasena = Column(String(255), nullable=False, comment="Hash bcrypt")
     telefono = Column(String(255), nullable=True)
+    tipo_documento = Column(String(10), nullable=True, comment="CC, NIT, PPE, CE")
     documento_identidad = Column(String(255), nullable=True)
     razon_social = Column(String(255), nullable=True)
     nit = Column(String(255), nullable=True)

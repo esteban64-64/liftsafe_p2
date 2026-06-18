@@ -40,8 +40,8 @@ export default function AsesorDashboard() {
 
   const inspectionItems = pending.slice(0, 5).map((item) => ({
     id: item.id,
-    title: `${item.elevator} — ${item.building}`,
-    subtitle: `Programada: ${item.nextDate}`,
+    title: item.building,
+    subtitle: `${item.elevator} · Programada: ${item.nextDate}`,
     chip: item.status,
     chipColor: 'warning',
     type: 'warning',

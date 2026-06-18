@@ -3,8 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, extract
 from app.database import get_db
 from app.models.models import Inspeccion, Ascensor, Usuario, Informe, Rol
-from jose import jwt, JWTError
-from app.config import settings
+from app.utils.auth_deps import get_current_user_role
 from datetime import datetime, timedelta
 import logging
 
@@ -12,28 +11,6 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
-
-def get_current_user_role(request: Request):
-    authorization = request.headers.get('authorization') or request.headers.get('Authorization')
-    logger.debug(f"Header recibido: {authorization}")
-    
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Token no proporcionado")
-    
-    if authorization.startswith("Bearer "):
-        token = authorization[7:]
-    else:
-        token = authorization
-    
-    logger.debug(f"Token limpio: {token[:30]}...")
-    
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        logger.debug(f"Payload OK: {payload}")
-        return payload.get("rol"), payload.get("sub"), payload.get("user_id")
-    except JWTError as e:
-        logger.error(f"JWT Error: {str(e)}")
-        raise HTTPException(status_code=401, detail=f"Token inválido: {str(e)}")
 
 
 def get_inspecciones_query(db: Session, rol: str, user_id: int):
@@ -286,10 +263,20 @@ def get_inspecciones(request: Request, db: Session = Depends(get_db)):
         if insp.inspector_rel:
             inspector_name = insp.inspector_rel.nombre_completo
         
+        elevator_label = "N/A"
+        brand = ""
+        model = ""
+        if ascensor:
+            brand = ascensor.marca or ""
+            model = ascensor.modelo or ""
+            elevator_label = f"{brand} {model}".strip() or "Sin datos"
+        
         resultado.append({
             "id": insp.id_inspeccion,
             "status": insp.estado or "Pendiente",
-            "elevator": ascensor.codigo_interno if ascensor else "N/A",
+            "elevator": elevator_label,
+            "brand": brand,
+            "model": model,
             "building": building_name,
             "date": fecha_str,
             "nextDate": next_date,
@@ -317,7 +304,7 @@ def get_edificios(request: Request, db: Session = Depends(get_db)):
         
         if direccion not in edificios_dict:
             edificios_dict[direccion] = {
-                "id": asc.id_ascensor,
+                "id": direccion,
                 "name": direccion,
                 "address": f"{asc.ubicacion_exacta or 'Sin ubicación'}, {asc.ciudad or 'Sin ciudad'}",
                 "elevators": 0,
@@ -350,7 +337,6 @@ def get_ascensores(request: Request, db: Session = Depends(get_db)):
         
         resultado.append({
             "id": asc.id_ascensor,
-            "code": asc.codigo_interno,
             "brand": asc.marca,
             "model": asc.modelo,
             "type": asc.tipo_ascensor,
@@ -359,6 +345,7 @@ def get_ascensores(request: Request, db: Session = Depends(get_db)):
             "city": asc.ciudad,
             "status": asc.estado,
             "capacity": asc.capacidad_kg,
+            "floors": asc.numero_pisos,
             "client": asc.cliente.nombre_completo if asc.cliente else "Sin cliente",
             "lastInspection": ultima_insp.fecha_inicio.strftime("%Y-%m-%d") if ultima_insp and ultima_insp.fecha_inicio else "No registrada",
             "nextInspection": "No programada"
@@ -376,13 +363,18 @@ def get_usuarios(request: Request, db: Session = Depends(get_db)):
     resultado = []
     
     for user in usuarios:
+        doc = user.nit or user.documento_identidad or ""
+        if user.tipo_documento:
+            doc_labels = {"CC": "CC", "NIT": "NIT", "PPE": "PPE", "CE": "CE"}
+            doc = f"{doc_labels.get(user.tipo_documento, user.tipo_documento)} {doc}".strip()
         resultado.append({
             "id": user.id_usuario,
             "name": user.nombre_completo or "Sin nombre",
             "email": user.correo or "",
             "role": user.rol.nombre_rol if hasattr(user, 'rol') and user.rol else "Usuario",
             "status": user.estado or "Activo",
-            "phone": user.telefono or ""
+            "phone": user.telefono or "",
+            "document": doc,
         })
     
     return resultado
@@ -404,10 +396,13 @@ def get_informes(request: Request, db: Session = Depends(get_db)):
     
     for inf in informes:
         ascensor = inf.ascensor
+        brand = ascensor.marca if ascensor else ""
+        model = ascensor.modelo if ascensor else ""
+        elevator_label = f"{brand} {model}".strip() or "N/A"
         
         resultado.append({
             "id": inf.id_inspeccion,
-            "elevator": ascensor.codigo_interno if ascensor else "N/A",
+            "elevator": elevator_label,
             "building": ascensor.direccion_completa if ascensor else "Sin edificio",
             "date": inf.fecha_inicio.strftime("%Y-%m-%d") if inf.fecha_inicio else "Sin fecha",
             "status": inf.estado,

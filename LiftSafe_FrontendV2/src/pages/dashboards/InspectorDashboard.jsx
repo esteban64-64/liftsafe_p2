@@ -24,8 +24,8 @@ export default function InspectorDashboard() {
 
   const upcomingItems = programmed.slice(0, 5).map((item) => ({
     id: item.id,
-    title: `${item.elevator} — ${item.building}`,
-    subtitle: `Fecha: ${item.date}`,
+    title: item.building,
+    subtitle: `${item.elevator} · Fecha: ${item.date}`,
     chip: item.status,
     chipColor: 'info',
     type: 'info',
@@ -33,8 +33,8 @@ export default function InspectorDashboard() {
 
   const completedItems = completed.slice(0, 5).map((item) => ({
     id: item.id,
-    title: `${item.elevator} — ${item.building}`,
-    subtitle: `Completada: ${item.date}`,
+    title: item.building,
+    subtitle: `${item.elevator} · Completada: ${item.date}`,
     chip: item.status,
     chipColor: 'success',
     type: 'success',

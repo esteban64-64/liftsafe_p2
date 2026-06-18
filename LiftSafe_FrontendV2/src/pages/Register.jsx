@@ -5,13 +5,12 @@ import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
-import WorkOutlineOutlinedIcon from '@mui/icons-material/WorkOutlineOutlined';
 import AuthLayout from '../layouts/AuthLayout';
+import PasswordRequirements from '../components/PasswordRequirements';
 import { useAuth } from '../context/AuthContext';
 import { brand } from '../theme/colors';
-
-
-const ROLES = ['Administrador', 'Asesor', 'Coordinador', 'Director Técnico', 'Inspector', 'Cliente'];
+import { DOCUMENT_TYPES } from '../config/api';
+import { isPasswordValid } from '../utils/passwordValidation';
 
 const fieldSx = {
   '& .MuiOutlinedInput-root': {
@@ -29,15 +28,33 @@ const fieldSx = {
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', email: '', document: '', role: 'Cliente', password: '', confirm: '' });
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    documentType: 'CC',
+    document: '',
+    businessName: '',
+    password: '',
+    confirm: '',
+  });
   const [error, setError] = useState('');
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.password) { setError('Completa los campos obligatorios'); return; }
-    if (form.password !== form.confirm) { setError('Las contraseñas no coinciden'); return; }
+    if (!form.name || !form.email || !form.document || !form.password) {
+      setError('Completa los campos obligatorios');
+      return;
+    }
+    if (!isPasswordValid(form.password)) {
+      setError('La contraseña no cumple los requisitos de seguridad');
+      return;
+    }
+    if (form.password !== form.confirm) {
+      setError('Las contraseñas no coinciden');
+      return;
+    }
     const result = await register(form);
     if (result.success) {
       navigate('/dashboard');
@@ -50,7 +67,7 @@ export default function Register() {
     <AuthLayout
       allowScroll
       title="Crear cuenta"
-      subtitle="Completa el formulario para crear tu cuenta"
+      subtitle="Registro disponible solo para clientes"
     >
       <Box component="form" onSubmit={handleSubmit}>
         {error && <Alert severity="error" sx={{ mb: 1.5 }}>{error}</Alert>}
@@ -59,27 +76,28 @@ export default function Register() {
             InputProps={{ startAdornment: <InputAdornment position="start"><PersonOutlinedIcon sx={{ color: brand.accent, fontSize: 20 }} /></InputAdornment> }} />
           <TextField fullWidth size="small" label="Correo electrónico" name="email" type="email" value={form.email} onChange={handleChange} sx={fieldSx}
             InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlinedIcon sx={{ color: brand.accent, fontSize: 20 }} /></InputAdornment> }} />
-          <TextField fullWidth size="small" select label="Tipo de usuario" name="role" value={form.role} onChange={handleChange} sx={fieldSx}
-            InputProps={{ startAdornment: <InputAdornment position="start"><WorkOutlineOutlinedIcon sx={{ color: brand.accent, fontSize: 20 }} /></InputAdornment> }}>
-            {ROLES.map((r) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
+          <TextField fullWidth size="small" select label="Tipo de documento" name="documentType" value={form.documentType} onChange={handleChange} sx={fieldSx}
+            InputProps={{ startAdornment: <InputAdornment position="start"><BadgeOutlinedIcon sx={{ color: brand.accent, fontSize: 20 }} /></InputAdornment> }}>
+            {DOCUMENT_TYPES.map((doc) => <MenuItem key={doc.value} value={doc.value}>{doc.label}</MenuItem>)}
           </TextField>
-          <TextField fullWidth size="small" label="Documento" name="document" value={form.document} onChange={handleChange} sx={fieldSx}
-            InputProps={{ startAdornment: <InputAdornment position="start"><BadgeOutlinedIcon sx={{ color: brand.accent, fontSize: 20 }} /></InputAdornment> }} />
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
-            <TextField fullWidth size="small" label="Contraseña" name="password" type="password" value={form.password} onChange={handleChange} sx={fieldSx}
-              InputProps={{ startAdornment: <InputAdornment position="start"><LockOutlinedIcon sx={{ color: brand.accent, fontSize: 20 }} /></InputAdornment> }} />
-            <TextField fullWidth size="small" label="Confirmar" name="confirm" type="password" value={form.confirm} onChange={handleChange} sx={fieldSx} />
-          </Box>
+          <TextField fullWidth size="small" label={form.documentType === 'NIT' ? 'Número de NIT' : 'Número de documento'} name="document" value={form.document} onChange={handleChange} sx={fieldSx} />
+          {form.documentType === 'NIT' && (
+            <TextField fullWidth size="small" label="Razón social" name="businessName" value={form.businessName} onChange={handleChange} sx={fieldSx} />
+          )}
+          <TextField fullWidth size="small" label="Contraseña" name="password" type="password" value={form.password} onChange={handleChange} sx={fieldSx}
+            InputProps={{ startAdornment: <InputAdornment position="start"><LockOutlinedIcon sx={{ color: brand.accent, fontSize: 20 }} /></InputAdornment> }} />
+          <PasswordRequirements password={form.password} />
+          <TextField fullWidth size="small" label="Confirmar contraseña" name="confirm" type="password" value={form.confirm} onChange={handleChange} sx={fieldSx} />
         </Box>
         <Button
           type="submit" fullWidth variant="contained" size="medium"
           sx={{
             py: 1.2, mt: 2, mb: 1.5,
             bgcolor: brand.accent, '&:hover': { bgcolor: brand.accentHover },
-            boxShadow: `0 4px 20px rgba(43,124,184,0.4)`,
+            boxShadow: '0 4px 20px rgba(43,124,184,0.4)',
           }}
         >
-          Crear cuenta
+          Crear cuenta de cliente
         </Button>
         <Box textAlign="center">
           <Link to="/login" style={{ color: brand.accent, textDecoration: 'none', fontWeight: 600, fontSize: 14 }}>
