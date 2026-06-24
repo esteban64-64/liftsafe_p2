@@ -8,7 +8,7 @@ export default function PasswordRequirements({ password }) {
 
   return (
     <Box sx={{ mt: 1 }}>
-      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+      <Typography variant="caption" sx={{ mb: 0.5, color: '#B0B8C4', display: 'block' }}>
         La contraseña debe cumplir:
       </Typography>
       {rules.map((rule) => (
@@ -18,7 +18,7 @@ export default function PasswordRequirements({ password }) {
           ) : (
             <RadioButtonUncheckedOutlinedIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
           )}
-          <Typography variant="caption" color={rule.valid ? 'success.main' : 'text.secondary'}>
+          <Typography variant="caption" sx={{ color: rule.valid ? '#4CAF50' : '#B0B8C4' }}>
             {rule.label}
           </Typography>
         </Box>

@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, text
 from app.database import get_db
 from app.models.models import Inspeccion, Ascensor, Usuario, Informe, Rol
 from app.utils.auth_deps import get_current_user_role
 from datetime import datetime, timedelta
 import logging
+from sqlalchemy import text
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -209,13 +210,15 @@ def get_charts(request: Request, db: Session = Depends(get_db)):
     
     inspection_status_data = []
     colores = {
-        'Aprobada': '#0E7C4A', 
-        'Finalizada': '#0E7C4A',
-        'Pendiente': '#C97B1A', 
-        'Borrador': '#C97B1A',
-        'En Proceso': '#C97B1A',
-        'Observaciones': '#C0392B',
-        'No Cumple': '#C0392B'
+        'Aprobada': '#0E7C4A',      # Verde oscuro
+        'Finalizada': '#1ABC9C',    # ✅ Verde aguamarina (DISTINTO)
+        'Pendiente': '#C97B1A',     # Naranja
+        'Borrador': '#F39C12',      # ✅ Amarillo/naranja (DISTINTO)
+        'En Proceso': '#E67E22',    # ✅ Naranja oscuro (DISTINTO)
+        'Observaciones': '#C0392B', # Rojo
+        'No Cumple': '#E74C3C',    # ✅ Rojo intenso (DISTINTO)
+        'Programada': '#0066CC',    # ✅ Azul (DISTINTO)
+        'Completada': '#16A085'     # ✅ Verde azulado (DISTINTO)
     }
     
     for r in estados_result:
@@ -359,21 +362,47 @@ def get_usuarios(request: Request, db: Session = Depends(get_db)):
     rol, correo, user_id = get_current_user_role(request)
     
     # Aplicar filtro por rol
-    usuarios = get_usuarios_query(db, rol, user_id).all()
-    resultado = []
+    if rol == "Administrador":
+        result = db.execute(text("""
+            SELECT u.*, r.nombre_rol 
+            FROM vista_usuarios_segura u
+            JOIN rol r ON u.id_rol = r.id_rol
+        """)).mappings().all()
+    elif rol == "Director Técnico":
+        result = db.execute(text("""
+            SELECT u.*, r.nombre_rol 
+            FROM vista_usuarios_segura u
+            JOIN rol r ON u.id_rol = r.id_rol
+            WHERE r.nombre_rol != 'Administrador'
+        """)).mappings().all()
+    elif rol == "Coordinador":
+        result = db.execute(text("""
+            SELECT u.*, r.nombre_rol 
+            FROM vista_usuarios_segura u
+            JOIN rol r ON u.id_rol = r.id_rol
+            WHERE r.nombre_rol IN ('Inspector', 'Cliente', 'Asesor')
+        """)).mappings().all()
+    else:
+        result = db.execute(text("""
+            SELECT u.*, r.nombre_rol 
+            FROM vista_usuarios_segura u
+            JOIN rol r ON u.id_rol = r.id_rol
+            WHERE u.id_usuario = :user_id
+        """), {"user_id": user_id}).mappings().all()
     
-    for user in usuarios:
-        doc = user.nit or user.documento_identidad or ""
-        if user.tipo_documento:
+    resultado = []
+    for row in result:
+        doc = row["nit"] or row["documento_identidad"] or ""
+        if row["tipo_documento"]:
             doc_labels = {"CC": "CC", "NIT": "NIT", "PPE": "PPE", "CE": "CE"}
-            doc = f"{doc_labels.get(user.tipo_documento, user.tipo_documento)} {doc}".strip()
+            doc = f"{doc_labels.get(row['tipo_documento'], row['tipo_documento'])} {doc}".strip()
         resultado.append({
-            "id": user.id_usuario,
-            "name": user.nombre_completo or "Sin nombre",
-            "email": user.correo or "",
-            "role": user.rol.nombre_rol if hasattr(user, 'rol') and user.rol else "Usuario",
-            "status": user.estado or "Activo",
-            "phone": user.telefono or "",
+            "id": row["id_usuario"],
+            "name": row["nombre_completo"] or "Sin nombre",
+            "email": row["correo"] or "",
+            "role": row["nombre_rol"] or "Usuario",
+            "status": row["estado"] or "Activo",
+            "phone": row["telefono"] or "",
             "document": doc,
         })
     
@@ -410,3 +439,39 @@ def get_informes(request: Request, db: Session = Depends(get_db)):
         })
     
     return resultado
+
+from datetime import datetime, timedelta
+
+@router.get("/reports-summary")
+def get_reports_summary(request: Request, db: Session = Depends(get_db)):
+    rol, correo, user_id = get_current_user_role(request)
+    
+    hoy = datetime.now()
+    treinta_dias = hoy + timedelta(days=30)
+    
+    # Base query de inspecciones según rol
+    base_query = get_inspecciones_query(db, rol, user_id)
+    
+    # Certificados emitidos = informes aprobados/finalizados
+    certificados = base_query.filter(
+        Inspeccion.estado.in_(['Aprobada', 'Finalizada', 'Completada'])
+    ).count()
+    
+    # Reportes pendientes = inspecciones no completadas
+    pendientes = base_query.filter(
+        Inspeccion.estado.in_(['Borrador', 'En Proceso', 'Programada', 'Pendiente'])
+    ).count()
+    
+    # Por vencer = inspecciones con próxima fecha en 30 días
+    # (asumiendo que la próxima inspección es 30 días después de la última)
+    por_vencer = base_query.filter(
+        Inspeccion.fecha_inicio != None,
+        Inspeccion.fecha_inicio <= treinta_dias,
+        Inspeccion.estado.in_(['Borrador', 'En Proceso', 'Programada'])
+    ).count()
+    
+    return {
+        "certificados": certificados,
+        "pendientes": pendientes,
+        "por_vencer": por_vencer
+    }

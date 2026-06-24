@@ -126,3 +126,10 @@ class ResetClaveRequest(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+    
+class InspeccionCreate(BaseModel):
+    id_ascensor: int
+    id_inspector: int
+    fecha_programada: datetime
+    tipo_servicio: str = "Periódica"
+    observaciones: Optional[str] = None

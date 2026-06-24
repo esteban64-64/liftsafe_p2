@@ -57,3 +57,33 @@ def mis_inspecciones(request: Request, db: Session = Depends(get_db)):
     
     else:
         raise HTTPException(status_code=403, detail="Rol no autorizado")
+    
+
+from app.schemas.schemas import InspeccionCreate
+from app.controllers.inspeccion_controller import crear_inspeccion
+from app.utils.auth_deps import get_current_user_role
+
+@router.post("/crear")
+def crear_nueva_inspeccion(
+    request: Request,
+    data: InspeccionCreate,
+    db: Session = Depends(get_db)
+):
+    rol, correo, user_id = get_current_user_role(request)
+    
+    # Solo admin y coordinador pueden crear inspecciones
+    if rol not in ['Administrador', 'Coordinador', 'Inspector']:
+        raise HTTPException(status_code=403, detail="No autorizado para crear inspecciones")
+    
+    # Si es inspector, usar su propio ID
+    inspector_id = user_id if rol == 'Inspector' else data.id_inspector
+    
+    try:
+        inspeccion = crear_inspeccion(db, data.dict(), inspector_id)
+        return {
+            "message": "Inspección creada exitosamente",
+            "id_inspeccion": inspeccion.id_inspeccion
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al crear inspección: {str(e)}")

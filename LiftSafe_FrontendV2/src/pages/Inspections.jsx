@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box, Card, CardContent, Button, Chip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Typography, Checkbox, FormControlLabel, Divider, Alert, CircularProgress,
@@ -12,7 +12,7 @@ import { brand } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { usePaginatedSearch } from '../hooks/usePaginatedSearch';
-import { fetchInspecciones } from '../services/dashboardService';
+import { fetchInspecciones, fetchEdificios, fetchAscensores, crearInspeccion } from '../services/dashboardService';
 
 const CHECKLIST_CATEGORIES = [
   { category: 'Seguridad', items: ['Frenos de emergencia', 'Paracaídas', 'Límite de velocidad', 'Puertas de cabina'] },
@@ -23,14 +23,117 @@ const CHECKLIST_CATEGORIES = [
 
 export default function Inspections() {
   const { hasAction } = useAuth();
-  const { data: rows = [], loading, error } = useDashboardData(fetchInspecciones);
+  const { data: rows = [], loading, error, refetch } = useDashboardData(fetchInspecciones);
   const { search, setSearch, page, setPage, paginated, totalCount } = usePaginatedSearch(
     rows,
     ['building', 'elevator', 'brand', 'model', 'type', 'inspector', 'status', 'date']
   );
+  
+  // Estados para el modal de nueva inspección
   const [open, setOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState(null);
+  
+  // ✅ Estados para edificios y ascensores
+  const [edificios, setEdificios] = useState([]);
+  const [ascensores, setAscensores] = useState([]);
+  const [edificioSeleccionado, setEdificioSeleccionado] = useState('');
+  const [ascensorSeleccionado, setAscensorSeleccionado] = useState('');
+  const [tipoInspeccion, setTipoInspeccion] = useState('Periódica');
+  const [fechaProgramada, setFechaProgramada] = useState('');
+  const [observaciones, setObservaciones] = useState('');
+  const [loadingModal, setLoadingModal] = useState(false);
+
+  // ✅ Cargar edificios al abrir el modal
+  useEffect(() => {
+    if (open) {
+      cargarEdificios();
+    }
+  }, [open]);
+
+  const cargarEdificios = async () => {
+    setLoadingModal(true);
+    try {
+      const data = await fetchEdificios();
+      setEdificios(data || []);
+    } catch (err) {
+      console.error('Error cargando edificios:', err);
+    } finally {
+      setLoadingModal(false);
+    }
+  };
+
+  // ✅ Cargar ascensores cuando se selecciona un edificio
+  const handleEdificioChange = async (edificioId) => {
+    setEdificioSeleccionado(edificioId);
+    setAscensorSeleccionado('');
+    if (!edificioId) {
+      setAscensores([]);
+      return;
+    }
+    
+    setLoadingModal(true);
+    try {
+      const todosAscensores = await fetchAscensores();
+      const ascensoresFiltrados = todosAscensores.filter(a => a.building === edificioId);
+      setAscensores(ascensoresFiltrados);
+    } catch (err) {
+      console.error('Error cargando ascensores:', err);
+    } finally {
+      setLoadingModal(false);
+    }
+  };
+
+  // ✅ LIMPIAR FORMULARIO - definida ANTES de handleCrearInspeccion
+  const limpiarFormulario = () => {
+    setEdificioSeleccionado('');
+    setAscensorSeleccionado('');
+    setTipoInspeccion('Periódica');
+    setFechaProgramada('');
+    setObservaciones('');
+    setAscensores([]);
+  };
+
+  // ✅ Crear inspección
+  const handleCrearInspeccion = async () => {
+    if (!edificioSeleccionado || !ascensorSeleccionado || !fechaProgramada) {
+      alert('Por favor complete todos los campos obligatorios');
+      return;
+    }
+    
+    const ascensor = ascensores.find(a => a.id === ascensorSeleccionado);
+    if (!ascensor) {
+      alert('Ascensor no válido');
+      return;
+    }
+    
+    const data = {
+      id_ascensor: parseInt(ascensorSeleccionado),
+      id_inspector: 1,
+      fecha_programada: fechaProgramada,
+      tipo_servicio: tipoInspeccion,
+      observaciones: observaciones
+    };
+    
+    try {
+      setLoadingModal(true);
+      const result = await crearInspeccion(data);
+      console.log('Inspección creada:', result);
+      
+      setOpen(false);
+      limpiarFormulario();
+      
+      // Recargar lista de inspecciones
+      if (refetch) refetch();
+      
+      alert('Inspección creada exitosamente');
+    } catch (err) {
+      console.error('Error creando inspección:', err);
+      alert(err.message || 'Error al crear inspección');
+    } finally {
+      setLoadingModal(false);
+    }
+  };
 
   return (
     <Box>
@@ -93,28 +196,90 @@ export default function Inspections() {
         </CardContent>
       </Card>
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
+      {/* ✅ MODAL DE NUEVA INSPECCIÓN CON DATOS REALES */}
+      <Dialog open={open} onClose={() => { setOpen(false); limpiarFormulario(); }} maxWidth="sm" fullWidth>
         <DialogTitle fontWeight={700}>Nueva inspección</DialogTitle>
         <DialogContent>
+          {loadingModal && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+              <CircularProgress size={24} />
+            </Box>
+          )}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <TextField select label="Edificio" fullWidth defaultValue="">
+            {/* ✅ Dropdown de Edificios reales */}
+            <TextField 
+              select 
+              label="Edificio" 
+              fullWidth 
+              value={edificioSeleccionado}
+              onChange={(e) => handleEdificioChange(e.target.value)}
+              disabled={loadingModal}
+            >
               <MenuItem value=""><em>Seleccione un edificio</em></MenuItem>
+              {edificios.map((ed) => (
+                <MenuItem key={ed.id} value={ed.id}>
+                  {ed.name} - {ed.address}
+                </MenuItem>
+              ))}
             </TextField>
-            <TextField select label="Ascensor" fullWidth defaultValue="">
+
+            {/* ✅ Dropdown de Ascensores filtrados por edificio */}
+            <TextField 
+              select 
+              label="Ascensor" 
+              fullWidth 
+              value={ascensorSeleccionado}
+              onChange={(e) => setAscensorSeleccionado(e.target.value)}
+              disabled={!edificioSeleccionado || loadingModal}
+            >
               <MenuItem value=""><em>Seleccione un ascensor</em></MenuItem>
+              {ascensores.map((asc) => (
+                <MenuItem key={asc.id} value={asc.id}>
+                  {asc.brand} {asc.model} - {asc.type} ({asc.capacity}kg)
+                </MenuItem>
+              ))}
             </TextField>
-            <TextField select label="Tipo de inspección" fullWidth defaultValue="Periódica">
+
+            <TextField 
+              select 
+              label="Tipo de inspección" 
+              fullWidth 
+              value={tipoInspeccion}
+              onChange={(e) => setTipoInspeccion(e.target.value)}
+            >
               <MenuItem value="Anual">Anual</MenuItem>
               <MenuItem value="Periódica">Periódica</MenuItem>
               <MenuItem value="Extraordinaria">Extraordinaria</MenuItem>
             </TextField>
-            <TextField label="Fecha programada" type="date" fullWidth InputLabelProps={{ shrink: true }} />
-            <TextField label="Observaciones iniciales" multiline rows={3} fullWidth />
+
+            <TextField 
+              label="Fecha programada" 
+              type="date" 
+              fullWidth 
+              InputLabelProps={{ shrink: true }}
+              value={fechaProgramada}
+              onChange={(e) => setFechaProgramada(e.target.value)}
+            />
+
+            <TextField 
+              label="Observaciones iniciales" 
+              multiline 
+              rows={3} 
+              fullWidth 
+              value={observaciones}
+              onChange={(e) => setObservaciones(e.target.value)}
+            />
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpen(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={() => setOpen(false)}>Crear inspección</Button>
+          <Button onClick={() => { setOpen(false); limpiarFormulario(); }}>Cancelar</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleCrearInspeccion}
+            disabled={!edificioSeleccionado || !ascensorSeleccionado || !fechaProgramada}
+          >
+            Crear inspección
+          </Button>
         </DialogActions>
       </Dialog>
 

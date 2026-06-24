@@ -1,9 +1,11 @@
+
+
 // src/services/dashboardService.js
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-// ✅ CORREGIDO: Lee el token correcto del localStorage
+// ✅ CORREGIDO: Lee el token correcto del sessionStorage
 const getToken = () => {
-  return localStorage.getItem('liftsafe_token') || localStorage.getItem('token');
+  return sessionStorage.getItem('liftsafe_token') || sessionStorage.getItem('token');
 };
 
 // Cliente API con manejo de errores mejorado
@@ -53,6 +55,8 @@ export const fetchUsuarios = () => apiClient('/dashboard/usuarios');
 
 export const fetchInformes = () => apiClient('/dashboard/informes');
 
+export const fetchReportsSummary = () => apiClient('/dashboard/reports-summary');
+
 // ============ AUTH ENDPOINTS ============
 
 export const login = async (credentials) => {
@@ -69,8 +73,8 @@ export const login = async (credentials) => {
   
   const data = await response.json();
   // ✅ Guardar con el nombre correcto
-  localStorage.setItem('liftsafe_token', data.access_token);
-  localStorage.setItem('token', data.access_token); // fallback
+  sessionStorage.setItem('liftsafe_token', data.access_token);
+  sessionStorage.setItem('token', data.access_token); // fallback
   return data;
 };
 
@@ -106,3 +110,26 @@ export const fetchMisAscensores = () => apiClient('/ascensores/mis-ascensores');
 // ============ INSPECCIONES (RUTAS DIRECTAS) ============
 
 export const fetchMisInspecciones = () => apiClient('/inspecciones/mis-inspecciones');
+
+
+// ============ CREAR INSPECCIÓN ============
+
+export const crearInspeccion = async (data) => {
+  const token = sessionStorage.getItem('liftsafe_token') || sessionStorage.getItem('token');
+  
+  const response = await fetch(`${API_URL}/inspecciones/crear`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+    },
+    body: JSON.stringify(data),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Error al crear inspección' }));
+    throw new Error(error.detail || 'Error al crear inspección');
+  }
+  
+  return response.json();
+};

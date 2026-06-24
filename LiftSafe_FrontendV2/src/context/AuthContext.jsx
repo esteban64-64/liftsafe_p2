@@ -19,7 +19,7 @@ export function AuthProvider({ children }) {
   
   const [user, setUser] = useState(() => {
     try {
-      const saved = localStorage.getItem('liftsafe_user');
+const saved = sessionStorage.getItem('liftsafe_user');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && parsed.role && parsed.token) {
@@ -28,8 +28,8 @@ export function AuthProvider({ children }) {
       }
     } catch (e) {
       console.error('Error al cargar usuario:', e);
-      localStorage.removeItem('liftsafe_user');
-      localStorage.removeItem('liftsafe_token');
+sessionStorage.removeItem('liftsafe_user');
+sessionStorage.removeItem('liftsafe_token');
     }
     return null;
   });
@@ -55,8 +55,8 @@ export function AuthProvider({ children }) {
     try {
       const data = await loginRequest(email, password);
       const userData = buildUserFromLogin(data, email);
-      localStorage.setItem('liftsafe_user', JSON.stringify(userData));
-      localStorage.setItem('liftsafe_token', data.access_token);
+      sessionStorage.setItem('liftsafe_user', JSON.stringify(userData));
+sessionStorage.setItem('liftsafe_token', data.access_token);
       setUser(userData);
       return { success: true };
     } catch (error) {
@@ -78,8 +78,8 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('liftsafe_user');
-    localStorage.removeItem('liftsafe_token');
+sessionStorage.removeItem('liftsafe_user');
+sessionStorage.removeItem('liftsafe_token');
     setUser(null);
     navigate('/login');
   };

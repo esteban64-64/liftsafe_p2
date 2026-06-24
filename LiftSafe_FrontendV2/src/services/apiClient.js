@@ -12,7 +12,7 @@ async function parseResponse(response) {
 }
 
 export async function apiGet(path) {
-  const token = localStorage.getItem('liftsafe_token');
+  const token = sessionStorage.getItem('liftsafe_token');
   const headers = {};
   if (token) headers.Authorization = `Bearer ${token}`;
 

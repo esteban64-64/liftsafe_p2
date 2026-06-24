@@ -1,7 +1,7 @@
 # app/models/models.py
 
 from app.database import Base
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey, Text, Boolean
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey, Text, Boolean, LargeBinary
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -26,8 +26,9 @@ class Usuario(Base):
     id_rol = Column(Integer, ForeignKey("rol.id_rol"), nullable=False)
     nombre_completo = Column(String(150), nullable=False)
     correo = Column(String(120), nullable=False, unique=True)
-    contrasena = Column(String(255), nullable=False, comment="Hash bcrypt")
+    contrasena_encriptada = Column(LargeBinary, nullable=True, comment="AES_ENCRYPT de MySQL")
     telefono = Column(String(255), nullable=True)
+    # ... resto
     tipo_documento = Column(String(10), nullable=True, comment="CC, NIT, PPE, CE")
     documento_identidad = Column(String(255), nullable=True)
     razon_social = Column(String(255), nullable=True)

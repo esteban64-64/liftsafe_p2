@@ -1,16 +1,39 @@
+# app/routes/auth.py
+
+import logging  # ← AGREGAR ESTA LÍNEA
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app.database import get_db
 from app.schemas.schemas import UsuarioLogin, Token, UsuarioRegister, RecuperarClaveRequest, ResetClaveRequest, MessageResponse
-from app.controllers.auth_controller import authenticate_user, create_access_token, hash_password, create_reset_token, verify_reset_token
+from app.controllers.auth_controller import (
+    authenticate_user, create_access_token, hash_password,
+    create_reset_token, verify_reset_token,
+    generate_reset_code, verify_reset_code
+)
 from app.controllers.email_controller import send_reset_email
 from app.models.models import Usuario, Rol
 from app.utils.auth_deps import CLIENTE_ROL_ID
 from jose import jwt, JWTError
 from app.config import settings
+from pydantic import BaseModel
+
+# ← AGREGAR ESTA LÍNEA AL FINAL DE LAS IMPORTACIONES
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
+# ── Schema para verificar código ──────────────────────────────────────────────
+class VerifyCodeRequest(BaseModel):
+    correo: str
+    code: str
+    nueva_contrasena: str
+
+class CodeCheckRequest(BaseModel):
+    correo: str
+    code: str
+
+# ── Login ─────────────────────────────────────────────────────────────────────
 @router.post("/login", response_model=Token)
 def login(credentials: UsuarioLogin, db: Session = Depends(get_db)):
     user = authenticate_user(db, credentials.correo, credentials.contrasena)
@@ -30,10 +53,11 @@ def login(credentials: UsuarioLogin, db: Session = Depends(get_db)):
         "nombre": user.nombre_completo
     }
 
+# ── Register ──────────────────────────────────────────────────────────────────
 @router.post("/register", response_model=MessageResponse)
 def register(user_data: UsuarioRegister, db: Session = Depends(get_db)):
     if user_data.id_rol != CLIENTE_ROL_ID:
-        raise HTTPException(status_code=403, detail="Solo los clientes pueden registrarse. Contacte al administrador para otros roles.")
+        raise HTTPException(status_code=403, detail="Solo los clientes pueden registrarse.")
 
     existing = db.query(Usuario).filter(Usuario.correo == user_data.correo).first()
     if existing:
@@ -41,51 +65,69 @@ def register(user_data: UsuarioRegister, db: Session = Depends(get_db)):
     
     rol = db.query(Rol).filter(Rol.id_rol == CLIENTE_ROL_ID).first()
     if not rol:
-        raise HTTPException(status_code=400, detail="Rol Cliente no configurado en el sistema")
+        raise HTTPException(status_code=400, detail="Rol Cliente no configurado")
 
-    new_user = Usuario(
-        id_rol=CLIENTE_ROL_ID,
-        nombre_completo=user_data.nombre_completo,
-        correo=user_data.correo,
-        contrasena=hash_password(user_data.contrasena),
-        telefono=user_data.telefono,
-        tipo_documento=user_data.tipo_documento,
-        documento_identidad=user_data.documento_identidad,
-        nit=user_data.nit if user_data.tipo_documento == "NIT" else None,
-        razon_social=user_data.razon_social if user_data.tipo_documento == "NIT" else None,
-        estado="activo"
+    db.execute(
+        text("""
+            INSERT INTO usuario (id_rol, nombre_completo, correo, contrasena_encriptada,
+                               telefono, tipo_documento, documento_identidad, estado)
+            VALUES (:id_rol, :nombre, :correo, AES_ENCRYPT(:contrasena, 'LiftSafeSecretKey2026!'),
+                    :telefono, :tipo_doc, :documento, 'activo')
+        """),
+        {
+            "id_rol": CLIENTE_ROL_ID,
+            "nombre": user_data.nombre_completo,
+            "correo": user_data.correo,
+            "contrasena": user_data.contrasena,
+            "telefono": user_data.telefono,
+            "tipo_doc": user_data.tipo_documento,
+            "documento": user_data.documento_identidad,
+        }
     )
-    db.add(new_user)
     db.commit()
     
     return {"message": "Usuario registrado exitosamente"}
 
+# ── Recuperar clave: envía código numérico ────────────────────────────────────
 @router.post("/recuperar-clave", response_model=MessageResponse)
 async def recuperar_clave(request: RecuperarClaveRequest, db: Session = Depends(get_db)):
     user = db.query(Usuario).filter(Usuario.correo == request.correo).first()
+    
+    # Siempre devolvemos el mismo mensaje para no revelar si el correo existe
     if not user:
-        return {"message": "Si el correo existe, recibirás un enlace de recuperación"}
+        return {"message": "Si el correo existe, recibirás un código de recuperación"}
     
-    token = create_reset_token(request.correo)
-    await send_reset_email(request.correo, token)
+    code = generate_reset_code(request.correo)
     
-    return {"message": "Si el correo existe, recibirás un enlace de recuperación"}
+    try:
+        await send_reset_email(request.correo, code)
+        return {"message": "Código enviado. Revisa tu bandeja de entrada."}
+    except Exception as e:
+        logger.error(f"Error enviando email a {request.correo}: {e}")
+        raise HTTPException(
+            status_code=503,  # Service Unavailable
+            detail="Error al enviar el correo. Por favor intenta más tarde o contacta soporte."
+        )
 
+
+# ── Verificar código y cambiar contraseña ────────────────────────────────────
 @router.post("/reset-clave", response_model=MessageResponse)
-def reset_clave(request: ResetClaveRequest, db: Session = Depends(get_db)):
-    correo = verify_reset_token(request.token)
-    if not correo:
-        raise HTTPException(status_code=400, detail="Token inválido o expirado")
+def reset_clave(request: VerifyCodeRequest, db: Session = Depends(get_db)):
+    print(f"🔍 ENDPOINT recibió: correo='{request.correo}', code='{request.code}'")
+    valid = verify_reset_code(request.correo, request.code)
+    if not valid:
+        raise HTTPException(status_code=400, detail="Código inválido o expirado")
     
-    user = db.query(Usuario).filter(Usuario.correo == correo).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    
-    user.contrasena = hash_password(request.nueva_contrasena)
+    # Actualizar contraseña con AES_ENCRYPT
+    db.execute(
+        text("UPDATE usuario SET contrasena_encriptada = AES_ENCRYPT(:pwd, 'LiftSafeSecretKey2026!') WHERE correo = :correo"),
+        {"pwd": request.nueva_contrasena, "correo": request.correo}
+    )
     db.commit()
     
     return {"message": "Contraseña actualizada exitosamente"}
 
+# ── Me ────────────────────────────────────────────────────────────────────────
 @router.get("/me")
 def get_current_user(db: Session = Depends(get_db), authorization: str = None):
     if not authorization or not authorization.startswith("Bearer "):

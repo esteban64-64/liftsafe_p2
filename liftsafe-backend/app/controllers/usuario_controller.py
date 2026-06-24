@@ -24,3 +24,8 @@ def get_cliente_ascensores(db: Session, client_id: int):
 
 def get_inspector_inspecciones(db: Session, inspector_id: int):
     return db.query(Inspeccion).filter(Inspeccion.id_inspector == inspector_id).all()
+
+## 
+
+
+

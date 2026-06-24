@@ -27,9 +27,9 @@ export function useDashboardData(fetchFunction) {
           console.error('Error en useDashboardData:', err);
           
           if (err.message?.includes('401') || err.message?.includes('Unauthorized') || err.message?.includes('expired')) {
-            localStorage.removeItem('liftsafe_token');
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
+            sessionStorage.removeItem('liftsafe_token');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('user');
             navigate('/login', { replace: true });
             return;
           }

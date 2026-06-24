@@ -71,11 +71,22 @@ export async function recoverPasswordRequest(correo) {
   return parseResponse(response);
 }
 
+// Mantén la original para token (por si la usas en otro lado)
 export async function resetPasswordRequest(token, nueva_contrasena) {
   const response = await fetch(`${API_BASE_URL}/auth/reset-clave`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token, nueva_contrasena }),
+  });
+  return parseResponse(response);
+}
+
+// Agrega esta función nueva para reset con código
+export async function resetPasswordWithCodeRequest(correo, code, nueva_contrasena) {
+  const response = await fetch(`${API_BASE_URL}/auth/reset-clave`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ correo, code, nueva_contrasena }),  // ← Formato que espera el backend
   });
   return parseResponse(response);
 }
